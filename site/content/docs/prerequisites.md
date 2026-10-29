@@ -31,6 +31,10 @@ both, satisfy the requirements for both features.
 
 The GPU Operator owns the compatibility of the NVIDIA components that it deploys.
 
+Alpha vGPU advertisement additionally requires NVIDIA vGPU Manager, host-reported creatable profiles, and Kubernetes partitionable devices.
+The driver cannot prepare vGPU claims for workloads.
+Refer to [vGPU advertisement prerequisites](guides/gpu-allocation/vgpu.md#prerequisites) before enabling it.
+
 ### Supported GPU hardware
 
 Hardware requirements depend on the resource type and feature:

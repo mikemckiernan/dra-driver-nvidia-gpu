@@ -22,3 +22,6 @@ activate one complete NVSwitch partition.
 For example manifests, refer to
 [`demo/`](https://github.com/kubernetes-sigs/dra-driver-nvidia-gpu/tree/{{< param driver_release_tag >}}/demo)
 in the repository.
+
+For alpha vGPU discovery, refer to [Advertise vGPU profiles](vgpu.md).
+This feature publishes possible vGPU partitions for inspection and scheduling evaluation; the driver cannot prepare them for workloads.

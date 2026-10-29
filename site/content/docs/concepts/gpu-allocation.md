@@ -13,6 +13,10 @@ The DRA Driver for NVIDIA GPUs exposes three types of GPU resources, each suited
 | `mig.nvidia.com` | MIG slice | Hardware-isolated partition of a supported GPU |
 | `vfio.gpu.nvidia.com` | VFIO passthrough | Raw GPU access for workloads that manage the driver themselves |
 
+The driver also provides alpha [vGPU advertisement](../guides/gpu-allocation/vgpu.md) through the `vgpu.gpu.nvidia.com` DeviceClass.
+It publishes possible vGPU partitions, but cannot prepare them for pods or virtual machines.
+The workload allocation flows on this page apply to the three resource types above.
+
 ---
 
 ## Resource types

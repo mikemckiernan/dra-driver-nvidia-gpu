@@ -31,7 +31,7 @@ helm show values oci://registry.k8s.io/dra-driver-nvidia/charts/dra-driver-nvidi
 | Value | Default | Description |
 |---|---|---|
 | `gpuResourcesEnabledOverride` | `false` | Must be `true` to enable GPU allocation when `resources.gpus.enabled=true`. Required because the driver cannot run alongside the standard GPU device plugin until [KEP 5004](https://github.com/kubernetes/enhancements/issues/5004) reaches GA. |
-| `resources.gpus.enabled` | `true` | Deploy the GPU kubelet plugin and register `gpu.nvidia.com`, `mig.nvidia.com`, and `vfio.gpu.nvidia.com` DeviceClasses. Requires `gpuResourcesEnabledOverride=true`. |
+| `resources.gpus.enabled` | `true` | Deploy the GPU kubelet plugin and register `gpu.nvidia.com`, `mig.nvidia.com`, `vfio.gpu.nvidia.com`, and `vgpu.gpu.nvidia.com` DeviceClasses. Requires `gpuResourcesEnabledOverride=true`. |
 | `resources.computeDomains.enabled` | `true` | Deploy the ComputeDomain controller and kubelet plugin; register ComputeDomain DeviceClasses. When `false`, the controller Deployment and compute-domain kubelet plugin container are not deployed. |
 
 Disable a plugin you do not need with no impact on the other:
@@ -42,7 +42,22 @@ Disable a plugin you do not need with no impact on the other:
 --set resources.gpus.enabled=false
 ```
 
-When GPU allocation is enabled, the chart also creates DeviceClass resources for full GPUs, MIG slices, and VFIO passthrough. Individual device types still require the appropriate hardware and [feature gates](feature-gates/).
+When GPU allocation is enabled, the chart creates DeviceClass resources for full GPUs, MIG slices, VFIO passthrough, and vGPU partitions.
+Individual device types still require the appropriate hardware and [feature gates](feature-gates/).
+Creating the vGPU DeviceClass does not enable vGPU advertisement or preparation.
+
+## vGPU advertisement
+
+These values control alpha vGPU advertisement by the GPU kubelet plugin.
+The driver does not implement vGPU instance creation, preparation, or disposal.
+
+| Value | Default | Description |
+|---|---|---|
+| `vgpu.profiles` | `""` | Comma-separated string of full vGPU type names, such as `"NVIDIA L40S-12Q,NVIDIA L40S-24Q"`. Names are case-sensitive; surrounding whitespace is trimmed. Only allowlisted types that NVML reports as creatable are advertised. An empty value advertises no vGPU partitions. Requires `featureGates.VGPUSupport=true`; otherwise chart validation fails for a nonempty value. Passed to the GPU kubelet plugin as `VGPU_PROFILES`, equivalent to `--vgpu-profiles`. |
+
+The `VGPUSupport` and `DRADeviceCompatibilityGroups` driver gates are both Alpha and default to `false`.
+Refer to [Feature gates](feature-gates.md) for their Kubernetes requirements and incompatible combinations.
+For host prerequisites, configuration, and verification, refer to [Advertise vGPU profiles](../guides/gpu-allocation/vgpu.md).
 
 ## ComputeDomain IMEX
 
