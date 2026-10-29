@@ -44,20 +44,16 @@ Disable a plugin you do not need with no impact on the other:
 
 When GPU allocation is enabled, the chart creates DeviceClass resources for full GPUs, MIG slices, VFIO passthrough, and vGPU partitions.
 Individual device types still require the appropriate hardware and [feature gates](feature-gates/).
-Creating the vGPU DeviceClass does not enable vGPU advertisement or preparation.
 
-## vGPU advertisement
+## vGPU support
 
-These values control alpha vGPU advertisement by the GPU kubelet plugin.
-The driver does not implement vGPU instance creation, preparation, or disposal.
+Use `vgpu.profiles` to choose the profiles available for VM workloads.
 
 | Value | Default | Description |
 |---|---|---|
-| `vgpu.profiles` | `""` | Comma-separated string of full vGPU type names, such as `"NVIDIA L40S-12Q,NVIDIA L40S-24Q"`. Names are case-sensitive; surrounding whitespace is trimmed. Only allowlisted types that NVML reports as creatable are advertised. An empty value advertises no vGPU partitions. Requires `featureGates.VGPUSupport=true`; otherwise chart validation fails for a nonempty value. Passed to the GPU kubelet plugin as `VGPU_PROFILES`, equivalent to `--vgpu-profiles`. |
+| `vgpu.profiles` | `""` | Comma-separated string of full vGPU type names, such as `"NVIDIA L40S-12Q,NVIDIA L40S-24Q"`. Names are case-sensitive; surrounding whitespace is trimmed. Only allowlisted types that NVML reports as creatable are advertised. An empty value advertises no vGPU partitions. Requires `featureGates.VGPUSupport=true`; otherwise chart validation fails for a nonempty value. |
 
-The `VGPUSupport` and `DRADeviceCompatibilityGroups` driver gates are both Alpha and default to `false`.
-Refer to [Feature gates](feature-gates.md) for their Kubernetes requirements and incompatible combinations.
-For host prerequisites, configuration, and verification, refer to [Advertise vGPU profiles](../guides/gpu-allocation/vgpu.md).
+For host prerequisites, configuration, and verification, refer to [Run virtual machines with vGPUs](../guides/gpu-allocation/vgpu.md).
 
 ## ComputeDomain IMEX
 

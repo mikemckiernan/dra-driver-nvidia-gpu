@@ -2,11 +2,11 @@
 title: ResourceSlice device attributes
 linkTitle: ResourceSlice attributes
 weight: 40
-description: NVIDIA GPU, MIG, VFIO, and alpha vGPU device attributes and capacity published in ResourceSlices.
+description: NVIDIA GPU, MIG, VFIO, and vGPU device attributes and capacity published in ResourceSlices.
 ---
 
 The DRA Driver for NVIDIA GPUs publishes each allocatable device — full GPUs, MIG
-slices, VFIO passthrough devices, and alpha vGPU partitions — as an entry under `spec.devices` in a
+slices, VFIO passthrough devices, and vGPU partitions — as an entry under `spec.devices` in a
 node's `ResourceSlice`. This page is a reference for the NVIDIA-specific
 attributes and capacity on those entries: what each field means and the exact
 names you reference in CEL selectors.
@@ -31,7 +31,7 @@ on it:
 | `gpu` | `gpu.nvidia.com` | Full physical GPU |
 | `mig` | `mig.nvidia.com` | MIG slice |
 | `vfio` | `vfio.gpu.nvidia.com` | VFIO passthrough device |
-| `vgpu` | `vgpu.gpu.nvidia.com` | Abstract vGPU profile slot; advertisement only, preparation is not implemented |
+| `vgpu` | `vgpu.gpu.nvidia.com` | Capacity to create one vGPU instance of a specific profile |
 
 The sections below show representative `spec.devices[]` entries for full GPUs, MIG slices, and VFIO devices, followed by a vGPU attribute reference.
 `kubectl` prints map keys alphabetically (so `type` and `uuid` appear last), the
@@ -171,9 +171,11 @@ are illustrative — confirm them on your own cluster.
 
 ## vGPU partition (type: vgpu)
 
-With `VGPUSupport` enabled and a nonempty profile allowlist, the driver advertises possible vGPU instances as slot devices.
-These devices do not represent existing vGPUs and cannot be prepared for workloads.
-Refer to [Advertise vGPU profiles](../guides/gpu-allocation/vgpu.md) for prerequisites and verification.
+With `VGPUSupport` enabled and a nonempty profile allowlist, the driver advertises vGPU slots.
+A vGPU slot represents capacity to create one instance of a specific vGPU profile on a physical GPU.
+A vGPU slot does not represent an existing vGPU instance.
+The driver creates and prepares a vGPU instance after Kubernetes allocates a slot to a claim.
+Refer to [Run virtual machines with vGPUs](../guides/gpu-allocation/vgpu.md) for prerequisites and verification.
 
 The following table lists the attributes on a vGPU slot.
 Use the `gpu.nvidia.com` domain in CEL selectors, as with other driver-specific attributes.
@@ -189,14 +191,14 @@ Use the `gpu.nvidia.com` domain in CEL selectors, as with other driver-specific 
 | `productName` | String | Parent GPU product name. |
 | `vgpuFramework` | String | Host framework detected as `mdev` (mediated devices) or `vf` (vendor-specific VFIO). If host sysfs is inconclusive, the driver uses NVML host vGPU mode as a hint. |
 | `sriovSupported` | Boolean | Whether the parent PCI function exposes `sriov_totalvfs`, indicating single-root I/O virtualization (SR-IOV) capability. Does not indicate that virtual functions are enabled. |
-| `eccMode` | Boolean | Current parent GPU error-correcting code (ECC) mode. Omitted if NVML cannot report it; omission does not mean `false`. |
+| `eccMode` | Boolean | Current parent GPU error-correcting code (ECC) mode. Omitted if NVML cannot report the ECC mode; omission does not mean `false`. |
 | `resource.kubernetes.io/pciBusID` | String | Parent GPU PCI bus address, when available. |
 | `resource.kubernetes.io/pcieRoot` | String | Parent GPU PCIe root, when available. |
 
 The vGPU publishing path does not add `resource.kubernetes.io/numaNode` or a `capacity` map to vGPU slots.
-Their framebuffer cost appears under `consumesCounters` instead.
+Each vGPU slot's framebuffer cost appears under `consumesCounters` instead.
 Each slot references the parent's `vgpu-<minor>-counter-set`, whose `framebuffer` counter holds the GPU's total memory budget.
-The full GPU consumes that entire budget, making it capacity-exclusive with its vGPU slots.
+Allocating the full GPU consumes the entire framebuffer budget and excludes vGPU slot allocations on the same GPU.
 
 When the driver's `DRADeviceCompatibilityGroups` gate is enabled, each slot's consumption entry also declares `compatibilityGroups: [vgpu-<shortProfileName>]`, while the full GPU declares `[gpu-full]`.
 The scheduler enforces compatibility only when the corresponding Kubernetes gate is enabled.

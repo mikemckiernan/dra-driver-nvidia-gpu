@@ -5,17 +5,16 @@ weight: 20
 description: How the gpu.nvidia.com driver allocates whole GPUs, MIG slices, and VFIO passthrough.
 ---
 
-The DRA Driver for NVIDIA GPUs exposes three types of GPU resources, each suited to different workload requirements. This page explains what they are, how they differ, and how Kubernetes schedules them.
+The DRA Driver for NVIDIA GPUs exposes four types of GPU resources, each suited to different workload requirements. This page explains what they are, how they differ, and how Kubernetes schedules them.
 
 | DeviceClass | Resource type | Use case |
 |---|---|---|
 | `gpu.nvidia.com` | Full GPU | Exclusive or shared access to a single physical GPU |
 | `mig.nvidia.com` | MIG slice | Hardware-isolated partition of a supported GPU |
 | `vfio.gpu.nvidia.com` | VFIO passthrough | Raw GPU access for workloads that manage the driver themselves |
+| `vgpu.gpu.nvidia.com` | vGPU | Profile-based GPU access for virtual machines sharing a physical GPU |
 
-The driver also provides alpha [vGPU advertisement](../guides/gpu-allocation/vgpu.md) through the `vgpu.gpu.nvidia.com` DeviceClass.
-It publishes possible vGPU partitions, but cannot prepare them for pods or virtual machines.
-The workload allocation flows on this page apply to the three resource types above.
+For VM profile selection, configuration, and guest GPU verification, refer to [Run virtual machines with vGPUs](../guides/gpu-allocation/vgpu.md).
 
 ---
 
@@ -130,15 +129,27 @@ Requires the `PassthroughSupport` feature gate (Alpha, default: false). See [Fea
 
 ---
 
+### vGPUs
+
+A vGPU gives a VM access to a physical GPU through a profile that defines the VM's framebuffer allocation and supported features.
+Multiple VMs can share one physical GPU through time-sliced vGPU profiles.
+The driver advertises capacity as vGPU slots, creates a vGPU instance when preparing a claim, and releases the instance when the claim is released.
+
+Target DeviceClass: `vgpu.gpu.nvidia.com`
+
+Refer to [Run virtual machines with vGPUs](../guides/gpu-allocation/vgpu.md) for benefits, sharing tradeoffs, prerequisites, and a KubeVirt workload example.
+
+---
+
 ## Choosing a resource type
 
-| | Full GPU | MIG slice | VFIO passthrough |
-|---|---|---|---|
-| Hardware isolation | No | Yes | Full device |
-| Sharing supported | Yes (consumable capacity, time-slicing, or MPS) | Yes (consumable capacity, time-slicing, or MPS) | No |
-| Supported hardware | All NVIDIA GPUs | MIG-capable data center GPUs (A100, A30, H100, and newer) | All NVIDIA GPUs |
-| Feature gate required | No (sharing gates optional) | No | `PassthroughSupport` (Alpha) |
-| Typical use case | ML training, general workloads | Multi-tenant inference, strict isolation | VM passthrough, specialized environments |
+| | Full GPU | MIG slice | VFIO passthrough | Time-sliced vGPU |
+|---|---|---|---|---|
+| Hardware isolation | No | Yes | Full device | Profile memory allocation; shared compute |
+| Sharing supported | Yes (consumable capacity, time-slicing, or MPS) | Yes (consumable capacity, time-slicing, or MPS) | No | Time-sliced across VMs |
+| Supported hardware | All NVIDIA GPUs | MIG-capable data center GPUs (A100, A30, H100, and newer) | All NVIDIA GPUs | vGPU-supported GPUs with compatible vGPU Manager |
+| Feature gate required | No (sharing gates optional) | No | `PassthroughSupport` (Alpha) | `VGPUSupport`; `DeviceMetadata` for KubeVirt |
+| Typical use case | ML training, general workloads | Multi-tenant inference, strict isolation | VM passthrough, specialized environments | Multiple VMs whose workloads can share GPU execution time |
 
 ### Add optional allocation features
 
@@ -165,7 +176,7 @@ For the topology workflow, refer to
 
 ## How scheduling works
 
-When a pod references a `ResourceClaim`, Kubernetes uses the following flow to allocate and inject the GPU:
+For container workloads, Kubernetes uses the following flow to allocate and inject a GPU requested through a `ResourceClaim`:
 
 ```mermaid
 sequenceDiagram
@@ -196,6 +207,9 @@ The key components in this flow:
 
 ---
 
+For vGPU workloads, KubeVirt attaches the prepared device to the VM and the NVIDIA guest driver provides GPU access inside the guest.
+Refer to the [vGPU workload guide](../guides/gpu-allocation/vgpu.md) for the VM allocation flow.
+
 ## Publishing GPUs in ResourceSlices
 
 The GPU kubelet plugin discovers the GPUs on each node and publishes them as `ResourceSlice` objects. One pool per node, all under the `gpu.nvidia.com` driver. The make up of a `ResourceSlice` depends on how each GPU is configured:
@@ -203,6 +217,7 @@ The GPU kubelet plugin discovers the GPUs on each node and publishes them as `Re
 - A GPU available as a full device is published with device `type: gpu` and you can request it through the `gpu.nvidia.com` DeviceClass.
 - A GPU with MIG mode enabled is published as its MIG slices instead of a full GPU. Each MIG slice is assigned `type: mig` and you can request it through the `mig.nvidia.com` DeviceClass. With dynamic MIG, the driver also advertises every possible MIG partition plus per-GPU shared counters. See [How dynamic MIG works](#how-dynamic-mig-works) above.
 - A GPU prepared for VFIO passthrough is published with device `type: vfio` and you can request it through the `vfio.gpu.nvidia.com` DeviceClass.
+- A GPU configured for vGPU workloads publishes slots with device `type: vgpu` for the allowlisted profiles. Each slot represents capacity to create one vGPU instance. Request the profile through the `vgpu.gpu.nvidia.com` DeviceClass.
 
 The driver discovers the node's GPUs once, when the GPU kubelet plugin starts, and that inventory stays fixed while the plugin runs. It republishes `ResourceSlices` at runtime to reflect allocation, as devices are claimed and released, and, if `NVMLDeviceHealthCheck` is enabled, device health changes. The GPU kubelet plugin does not re-scan hardware. If you make a manual change to a node's GPU or MIG configuration, for example, reconfiguring MIG with `nvidia-smi`, you must restart the GPU kubelet plugin for the changes to take effect in the resource pool.
 

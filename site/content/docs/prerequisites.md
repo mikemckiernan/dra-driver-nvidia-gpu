@@ -31,9 +31,15 @@ both, satisfy the requirements for both features.
 
 The GPU Operator owns the compatibility of the NVIDIA components that it deploys.
 
-Alpha vGPU advertisement additionally requires NVIDIA vGPU Manager, host-reported creatable profiles, and Kubernetes partitionable devices.
-The driver cannot prepare vGPU claims for workloads.
-Refer to [vGPU advertisement prerequisites](guides/gpu-allocation/vgpu.md#prerequisites) before enabling it.
+vGPU workloads require NVIDIA vGPU Manager on the GPU nodes.
+NVIDIA vGPU Manager must report that the configured vGPU profiles can be created.
+
+Use Kubernetes v1.34.2 or later with the `DRAPartitionableDevices` feature enabled.
+On v1.34 and v1.35, enable the feature on the kube-apiserver and kube-scheduler.
+On v1.36 and later, the feature is enabled by default.
+The `DRAPartitionableDevices` feature enables Kubernetes to track how vGPU allocations consume a physical GPU's shared capacity.
+
+Before configuring vGPU workloads, review the [additional prerequisites](guides/gpu-allocation/vgpu.md#prerequisites).
 
 ### Supported GPU hardware
 
